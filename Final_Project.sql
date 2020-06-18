@@ -1,3 +1,5 @@
+--Creating Tables and Inserting records:
+-- 1) Creating INDICATION_LIST Table
 
 Create table INDICATION_LIST
     (In_ID          INT         NOT NULL,
@@ -9,7 +11,7 @@ Create table INDICATION_LIST
     CONSTRAINT      DRUGID_FK   FOREIGN KEY(Drug_ID) REFERENCES DRUG(Drug_ID)
 );
 
-
+-- Inserting into INDICATION_LIST Table
 INSERT INTO INDICATION_LIST VALUES('2020','12','Abdominal crampy pains', 'Cardiovascular', 'hp');
 INSERT INTO INDICATION_LIST VALUES('2021','20','Abdominal pain', 'Cardiovascular', 'hp');
 INSERT INTO INDICATION_LIST VALUES('2022','17','Abdominal pain upper', 'Metabolism', 'hp');
@@ -38,6 +40,7 @@ SELECT * FROM INDICATION_LIST;
 
 =====================================================================================================
 
+-- Creating CHEMICAL_COMBINATION Table:
 
 Create table CHEMICAL_COMBINATION
     (Comb_ID                INT         NOT NULL PRIMARY KEY,
@@ -46,7 +49,7 @@ Create table CHEMICAL_COMBINATION
     Display_Name            VARCHAR(25) NOT NULL
 );
 
-
+-- Inserting records into CHEMICAL_COMBINATION Table:
 
 INSERT INTO CHEMICAL_COMBINATION VALUES('104', 'alteferdlase','altepqase', 'CardioTab');
 INSERT INTO CHEMICAL_COMBINATION VALUES('132', 'pramipexole monohydrate', 'pramipexole', 'CNS Drug');
@@ -77,6 +80,7 @@ INSERT INTO CHEMICAL_COMBINATION VALUES('528', 'linaglin + metfomin','linagliZOL
 SELECT * FROM CHEMICAL_COMBINATION;
 
 ===============================================================================================================================
+-- Creating drug Table:
 
 CREATE TABLE DRUG(
     Drug_ID     INT         NOT NULL,
@@ -89,6 +93,7 @@ CREATE TABLE DRUG(
 
 
 SELECT * FROM Drug;
+-- INSERTING INTO DRUG Table:
 
 INSERT INTO DRUG VALUES('12', 'Global Brand','ACTILYSILVA', '104');
 INSERT INTO DRUG VALUES('13', 'Global Brand','APTISIVUS', '243');
@@ -121,9 +126,7 @@ ALTER TABLE Drug
 DROP COLUMN Therapeutic_Area;
 ===========================================================================================================================
 
-
-
-
+-- Creating STRENGTH Table:
 
 CREATE TABLE STRENGTH(
     DrugStrength_ID INT NOT     NULL,
@@ -135,7 +138,7 @@ CREATE TABLE STRENGTH(
     CONSTRAINT      Drug_FK     FOREIGN KEY(Drug_ID) REFERENCES Drug(Drug_ID));
 
 
-
+-- Inserting into STRENGTH Table:
 INSERT INTO STRENGTH VALUES('7', '12','ACTILYSEzol DRY INF.AMPOULE','250', 'DRY INF.AMPOULE');
 INSERT INTO STRENGTH VALUES('8', '16','GIOTRInoiroF FILMCOATED TABS','250', 'FILMCOATED TABS');
 INSERT INTO STRENGTH VALUES('9', '16','GIOTRInoiroF TABS','300', 'FILMCOATED TABS');
@@ -161,13 +164,9 @@ INSERT INTO STRENGTH VALUES('25', '26','SPIOLTO 5G METERED DOSE LIQUI','5', 'MET
 INSERT INTO STRENGTH VALUES('26', '27','SPIRIVA 18 MG INHALER CAPSULE','18', 'INHALER CAPSULE');
 
 
-
-
 =================================================================================================================================
 
-
-
-
+--Creating VIEW for mainly focused Therapeutic areas:
 
 CREATE VIEW Top_Therapeutic_Areas (Therapetic_Area,Drugs, Symptoms) AS
     SELECT I.Therapeutic_Area, D.Drug_Name, I.Indication
@@ -183,6 +182,8 @@ Select * from Top_Therapeutic_Areas;
 
 ===========================================================================================================================
 
+--Creating VIEW to easy access to Local Branded drugs:
+								     
 CREATE VIEW LocalBrand_Drugs(Drug_Type, Drug_Name,Chemical_Combination, Display_Name) AS
     SELECT D.drug_Type, D.Drug_Name, C.Chemical_Combination, C.Display_Name
     FROM DRUG D INNER JOIN  CHEMICAL_COMBINATION C
@@ -193,7 +194,7 @@ CREATE VIEW LocalBrand_Drugs(Drug_Type, Drug_Name,Chemical_Combination, Display_
 SELECT * FROM LocalBrand_Drugs;
 
 =========================================================================================================================
-trigger 1:
+--Creating Trigger for adding indications:
 
 CREATE OR REPLACE TRIGGER Add_Indications
 BEFORE INSERT ON INDICATION_LIST
@@ -218,99 +219,44 @@ END IF;
 END;
 /
 
-
+-- Adding Indication:
 SET SERVEROUTPUT ON;
 INSERT INTO INDICATION_LIST (In_ID, Drug_ID, Indication, Therapeutic_Area, Patient_Group)
 VALUES('2041','25','Bone Crack', 'OrthoPedic', 'HP');
 
 
 ================================================================================================
-
-
-select * from STRENGTH;
-
-
-
-=========
-
-trigger 2:
-
-SET SERVEROUTPUT ON
-CREATE OR REPLACE TRIGGER Update_mytrigger
-BEFORE INSERT or update ON STRENGTH
-
-FOR EACH ROW
-
+ --Creating Trigger to update dosage:
+CREATE or REPLACE TRIGGER UpdateDosage
+	AFTER INSERT OR UPDATE ON strength
+  FOR EACH ROW
 DECLARE
-rowcount  INT;
-DrugStrength_ID NUMBER(38);
-DID NUMBER(38);
-
+	rowCount	Int;
+  o_Drug_ID    number(25);
+  o_strength    number(25);
+  n_dosage      VARCHAR(100);
+ 
 BEGIN
+  o_Drug_ID := :old.Drug_ID;
+  o_strength := :old.strength;
+  n_dosage := :new.dosage; 
 
---DrugStrength_ID=: new.DID;
 SELECT COUNT(*) INTO rowcount
-FROM STRENGTH
-where DID = DrugStrength_ID ;
+FROM Strength
+where Drug_ID = o_Drug_ID
+and strength = o_strength;
 
-IF (rowcount = 1) Then
- 
-Update STRENGTH
- SET Dosage='METERED DOSE LIQUID' 
-    Where DrugStrength_ID= '9';
-        
-END IF;
+	
+	IF (rowCount = 1) THEN
+		UPDATE strength
+		SET Dosage = n_dosage
+		where Drug_ID = o_Drug_ID
+        and strength = o_strength;
+	END IF;
+END;
+============================================================================================
 
- END;
- /
- 
- 
- =============
- drop trigger Update_mytrigger;
- 
- 
-select * from drug;
- ====================
- 
-
-SET SERVEROUTPUT ON
-CREATE OR REPLACE TRIGGER Update_mytrigger
-BEFORE INSERT or update ON STRENGTH
-
-FOR EACH ROW
-
-DECLARE
-rowcount  INT;
-DrugStrength_ID NUMBER(38);
-DID NUMBER(38);
-dosage varchar(55);
-BEGIN
-
-dosage := :new.dosage;
---DrugStrength_ID=: new.DID;
-SELECT COUNT(*) INTO rowcount
-FROM STRENGTH
-where DID = :new.DrugStrength_ID ;
-
-IF (rowcount = 1) Then
- 
-Update STRENGTH
- SET Dosage= :new.dosage 
-    Where DrugStrength_ID= :new.DrugStrength_ID;
-        
-END IF;
-
- END;
- /
- 
- 
- Update STRENGTH
- SET Dosage= 'METERED DOSE LIQUI' 
-    Where DrugStrength_ID= 9;
-    
-    
-    =====================================================================================================
- **************************************Cursor:
+-- Creating Cursor Metabolism_Chem_Info
  
 CREATE OR REPLACE PROCEDURE Metabolism_Chem_Info(I_DISPLAY_NAME IN CHEMICAL_COMBINATION.DISPLAY_NAME%TYPE) IS
 I_DRUG_NAME DRUG.DRUG_NAME%TYPE;
@@ -339,7 +285,7 @@ Metabolism_Chem_Info('Metabolic Drug');
 END;
 
 ===============================================================================================================
-******************Allow management to add a new Drug to the database checking if the drug exist or not.
+--Allow management to add a new Drug to the database checking if the drug exist or not.
 
 SET SERVEROUTPUT ON
 CREATE OR REPLACE PROCEDURE Add_New_Drug(
@@ -373,7 +319,7 @@ COMMIT;
 END;	
  
  ===========================================
-CALLING STORED PROCEDURE:
+--CALLING STORED PROCEDURE:
 
 SET SERVEROUTPUT ON 
 CALL 	Add_New_Drug
@@ -383,7 +329,8 @@ select * from drug;
 
 =================================================================================================================================
 
-************promt variable:
+-- Using promt variable:
+--This allows management to update the Drug’s Therapeutic area. 
 
 SET SERVEROUTPUT ON
 DECLARE
@@ -400,94 +347,8 @@ where INDICATION = '&I_INDICATION';
 END;
 /
 =========================================================================================================
-select * from strength;
-trigger 2:
 
-SET SERVEROUTPUT ON
-CREATE OR REPLACE TRIGGER MyTrigger
-BEFORE INSERT ON Strength
-
-FOR EACH ROW
-
-DECLARE
-rowcount  INT;
-drug_id NUMBER(38);
-DID NUMBER(38);
-
-BEGIN
-
---CustomerID:=new.CID;
-
-SELECT COUNT(*) INTO rowcount
-FROM Strength
-where DID = drug_id;
-
-
-IF (rowcount = 1) Then
- 
-    Update Strength
- SET dosage='FILMCOATED TAB'
-    Where drug_id = '16'
-    and strength = '300';
-        
-
-END IF;
-
- END;
-
-drop trigger UpdateDosage;
-
-+++++++++++++++++++
-select * from strength;
-
-CREATE or REPLACE TRIGGER UpdateDosage
-	AFTER INSERT OR UPDATE ON strength
-  FOR EACH ROW
-DECLARE
-	rowCount	Int;
-  o_Drug_ID    number(25);
-  o_strength    number(25);
-  n_dosage      VARCHAR(100);
- 
-BEGIN
-  o_Drug_ID := :old.Drug_ID;
-  o_strength := :old.strength;
-  n_dosage := :new.dosage; 
-
-SELECT COUNT(*) INTO rowcount
-FROM Strength
-where Drug_ID = o_Drug_ID
-and strength = o_strength;
-
-	
-	IF (rowCount = 1) THEN
-		UPDATE strength
-		SET Dosage = n_dosage
-		where Drug_ID = o_Drug_ID
-        and strength = o_strength;
-	END IF;
-END;
-
-
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-UPDATE strength
-		SET Dosage = 'METERED DOSE LIQUID'
-		where drug_id = '16'
-        and strength = '300';
-        
-==========================================================================================================
-
-
-*******************************************report:
-
-Select * from drug where drug_type ='Global Brand';
-select * from strength where strength <= '50';
-
-
-
-
+--Creating report
 
 
 Create View SMALL_STRENGTH_DRUGS As
@@ -497,56 +358,4 @@ Create View SMALL_STRENGTH_DRUGS As
     on  D.Drug_ID= S.Drug_ID
     where D.Drug_Type = 'Global Brand'
         and S.strength <= 50;
-
-
-
-Select * from SMALL_STRENGTH_DRUGS;
-
-
-
-
-
-
-
-Select * from Indication_list I
-where I.therapeutic_area='Cardiovascular'
-    
---inner join Indication_List I on D.Drug_ID= I.Drug_ID
-
---where Therapeutic_Area = (Select Therapeutic_Area from Indication where Therapeutic_Area = 'Cardiovascular'; )
-
-
-   -- and I.therapeutic_area = 'Central Nervous System';
-select * from indication_list;
-select * from drug;
-select * from strength;
-select * from chemical_combination;
-select d.drug_name, I.strength from
-drug d inner join strength I on d.drug_id = I.drug_id
-where strength = '5';
-
-
-
-
-
-
-
-
-
-SELECT D.drug_name , I.therapeutic_area, I.Indication, s.strength
-FROM drug D
-INNER JOIN  strength s ON D.drug_Id = s.drug_Id
-INNER JOIN  indication_list I ON D.drug_Id = I.drug_Id
-WHERE drug_name = 'GIOQUILTRIF';
-
-
-select 
-
-
-SELECT C.chemical_combination, S.strength, C.display_name
-FROM drug D
-INNER JOIN chemical_combination C ON D.comb_id = C.comb_id
-INNER JOIN  strength S ON D.drug_Id = S.drug_Id
-WHERE Chemical_combination = 'afatinib';
-
 
